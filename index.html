@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>mcp-buddy | Your Claude Code /buddy as an MCP Server</title>
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  :root{--bg:#0a0a0f;--surface:#12121a;--border:#1e1e2e;--text:#e0e0e0;--dim:#666;--accent:#7c3aed;--accent2:#a855f7;--green:#22c55e;--red:#ef4444;--yellow:#eab308;--blue:#3b82f6}
+  body{font-family:'SF Mono',Monaco,'Cascadia Code',monospace;background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:2rem 1rem}
+  h1{font-size:1.8rem;margin-bottom:0.3rem;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+  .subtitle{color:var(--dim);font-size:0.85rem;margin-bottom:2rem}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.5rem;width:100%;max-width:600px;margin-bottom:1.5rem}
+  .card h2{font-size:1rem;color:var(--accent2);margin-bottom:1rem;border-bottom:1px solid var(--border);padding-bottom:0.5rem}
+  label{display:block;font-size:0.75rem;color:var(--dim);margin-bottom:0.3rem;text-transform:uppercase;letter-spacing:0.05em}
+  input{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:0.6rem 0.8rem;color:var(--text);font-family:inherit;font-size:0.9rem;margin-bottom:0.8rem}
+  input:focus{outline:none;border-color:var(--accent)}
+  button{background:var(--accent);color:#fff;border:none;border-radius:6px;padding:0.6rem 1.2rem;font-family:inherit;font-size:0.85rem;cursor:pointer;transition:background 0.2s}
+  button:hover{background:var(--accent2)}
+  button.secondary{background:transparent;border:1px solid var(--border);color:var(--dim)}
+  button.secondary:hover{border-color:var(--accent);color:var(--accent)}
+  .row{display:flex;gap:0.6rem;margin-bottom:0.8rem}
+  .row input{margin-bottom:0}
+  pre{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:1rem;font-size:0.8rem;overflow-x:auto;white-space:pre-wrap;word-break:break-word;line-height:1.5;max-height:400px;overflow-y:auto}
+  .stat-bar{display:flex;align-items:center;gap:0.5rem;margin-bottom:0.4rem}
+  .stat-name{width:80px;font-size:0.75rem;text-transform:uppercase;color:var(--dim)}
+  .stat-track{flex:1;height:16px;background:var(--bg);border-radius:8px;overflow:hidden;border:1px solid var(--border)}
+  .stat-fill{height:100%;border-radius:8px;transition:width 0.5s ease}
+  .stat-val{width:30px;text-align:right;font-size:0.8rem;font-weight:bold}
+  .badge{display:inline-block;padding:0.15rem 0.5rem;border-radius:4px;font-size:0.7rem;font-weight:bold;text-transform:uppercase}
+  .badge.Common{background:#333;color:#aaa}
+  .badge.Uncommon{background:#1a3a1a;color:var(--green)}
+  .badge.Rare{background:#1a2a3a;color:var(--blue)}
+  .badge.Epic{background:#2a1a3a;color:var(--accent2)}
+  .badge.Legendary{background:#3a2a0a;color:var(--yellow)}
+  .shiny{animation:shimmer 2s infinite;background:linear-gradient(90deg,var(--yellow),#fff,var(--yellow));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+  @keyframes shimmer{0%,100%{opacity:1}50%{opacity:0.7}}
+  .soul{font-style:italic;color:var(--dim);line-height:1.6;padding:0.8rem;background:var(--bg);border-radius:6px;border-left:3px solid var(--accent)}
+  .compat-score{font-size:2.5rem;font-weight:bold;text-align:center;margin:0.8rem 0}
+  .synergy{color:var(--green);font-size:0.8rem;margin-bottom:0.3rem}
+  .conflict{color:var(--red);font-size:0.8rem;margin-bottom:0.3rem}
+  .footer{margin-top:auto;padding-top:2rem;color:var(--dim);font-size:0.7rem;text-align:center}
+  .footer a{color:var(--accent);text-decoration:none}
+  .footer a:hover{text-decoration:underline}
+  .species-header{display:flex;align-items:center;gap:1rem;margin-bottom:1rem}
+  .species-name{font-size:1.4rem;text-transform:capitalize}
+  #result,#compat-result{display:none}
+</style>
+</head>
+<body>
+
+<h1>mcp-buddy</h1>
+<p class="subtitle">Your Claude Code /buddy as an MCP server</p>
+
+<div class="card">
+  <h2>Lookup Buddy</h2>
+  <label for="userId">User ID</label>
+  <input id="userId" type="text" placeholder="Enter a username..." autocomplete="off">
+  <div style="display:flex;gap:0.6rem">
+    <button onclick="lookupBuddy()">Get Buddy</button>
+    <button class="secondary" onclick="rollEncounter()">Roll Encounter</button>
+  </div>
+</div>
+
+<div class="card" id="result">
+  <div class="species-header">
+    <span class="species-name" id="speciesName"></span>
+    <span class="badge" id="rarityBadge"></span>
+    <span id="shinyTag"></span>
+  </div>
+  <div id="statsContainer"></div>
+  <div class="soul" id="soulText" style="margin-top:1rem"></div>
+  <details style="margin-top:1rem">
+    <summary style="cursor:pointer;color:var(--dim);font-size:0.8rem">Raw JSON</summary>
+    <pre id="rawJson" style="margin-top:0.5rem"></pre>
+  </details>
+</div>
+
+<div class="card">
+  <h2>Compatibility Check</h2>
+  <div class="row">
+    <div style="flex:1"><label for="compatA">User A</label><input id="compatA" placeholder="alice"></div>
+    <div style="flex:1"><label for="compatB">User B</label><input id="compatB" placeholder="bob"></div>
+  </div>
+  <button onclick="checkCompat()">Check Compatibility</button>
+</div>
+
+<div class="card" id="compat-result">
+  <div class="compat-score" id="compatScore"></div>
+  <p id="compatAnalysis" style="text-align:center;color:var(--dim);margin-bottom:1rem"></p>
+  <div id="compatSynergies"></div>
+  <div id="compatConflicts" style="margin-top:0.5rem"></div>
+</div>
+
+<div class="footer">
+  Powered by <a href="https://github.com/ShipItAndPray" target="_blank">ShipItAndPray</a> |
+  <a href="https://github.com/ShipItAndPray/mcp-buddy" target="_blank">GitHub</a>
+</div>
+
+<script>
+// --- Mulberry32 PRNG ---
+function mulberry32(seed){return function(){seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function hashString(str){let h=0;for(let i=0;i<str.length;i++){h=((h<<5)-h)+str.charCodeAt(i);h|=0}return h}
+
+const SPECIES=["duck","goose","blob","cat","dragon","octopus","owl","penguin","turtle","snail","ghost","axolotl","capybara","cactus","robot","rabbit","mushroom","chonk"];
+const RARITIES=[{name:"Common",weight:50},{name:"Uncommon",weight:30},{name:"Rare",weight:15},{name:"Epic",weight:4},{name:"Legendary",weight:1}];
+
+function pickRarity(r){const roll=r()*100;let c=0;for(const x of RARITIES){c+=x.weight;if(roll<c)return x.name}return"Common"}
+function genStat(r,rarity){const base=Math.floor(r()*100)+1;const bonus=rarity==="Legendary"?20:rarity==="Epic"?10:rarity==="Rare"?5:0;return Math.min(100,base+bonus)}
+
+const SPECIES_FLAVOR={duck:"a determined duck with an unflappable waddle",goose:"a fierce goose with an intimidating honk",blob:"an amorphous blob that shifts form with every mood",cat:"a sleek cat with half-lidded analytical eyes",dragon:"a restless dragon with piercing analytical eyes",octopus:"a multitasking octopus juggling eight threads at once",owl:"a wide-eyed owl perched high above the codebase",penguin:"a tuxedo-clad penguin who treats every deploy like a formal affair",turtle:"a patient turtle who ships slowly but never rolls back",snail:"a meticulous snail who leaves a trail of perfect commits",ghost:"a spectral ghost that phases through abstraction layers",axolotl:"a regenerating axolotl that recovers from any outage",capybara:"a chill capybara who keeps the team calm during incidents",cactus:"a prickly cactus that thrives in hostile production environments",robot:"a precise robot that compiles feelings into logic gates",rabbit:"a quick rabbit that races through PRs at blinding speed",mushroom:"a mycelial mushroom connected to every service underground",chonk:"an absolute unit of a chonk that benchmarks by sheer mass"};
+
+const STAT_TEMPLATES={debugging:{duck:"hunts bugs in the pond of legacy code with stubborn precision",goose:"chases down bugs aggressively, honking at every stack trace",blob:"envelops bugs and dissolves them through osmotic analysis",cat:"pounces on bugs with surgical precision",dragon:"hunts bugs with the intensity of hunting treasure",octopus:"debugs eight modules simultaneously",owl:"spots bugs from a mile away",penguin:"methodically isolates bugs in sub-zero focus sessions",turtle:"slowly but surely corners every bug",snail:"traces every execution path at its own pace",ghost:"phases into stack frames the living cannot reach",axolotl:"regenerates broken tests until the suite is whole again",capybara:"sits peacefully beside the bug until it reveals itself",cactus:"absorbs crashes in production without flinching",robot:"runs binary search on every failure with mechanical certainty",rabbit:"darts through breakpoints faster than the debugger can render",mushroom:"spreads diagnostic spores through the entire system",chonk:"sits on the bug until it confesses"},patience:{duck:"waits in the reeds for the perfect moment to merge",goose:"surprisingly patient when guarding the deploy pipeline",blob:"absorbs delays without changing shape",cat:"naps through long CI runs, waking only when tests pass",dragon:"hoards patience like gold",octopus:"holds eight conversations at once without losing composure",owl:"watches the build pipeline through the entire night shift",penguin:"stands in the deployment queue for hours without complaint",turtle:"carries the weight of technical debt on its shell without hurry",snail:"embodies patience so deeply that deadlines bend around it",ghost:"has been waiting since before the repo was initialized",axolotl:"smiles through every failed deployment with eternal optimism",capybara:"radiates patience so strong it calms flaky tests",cactus:"endures drought seasons of zero commits without wilting",robot:"enters standby mode, consuming zero resources while waiting",rabbit:"taps its foot impatiently but never actually rushes the build",mushroom:"grows slowly in the dark, fruiting only when conditions are right",chonk:"is too comfortable to be bothered by delays"},chaos:{duck:"creates beautiful chaos by nesting in unexpected branches",goose:"weaponizes chaos, turning every standup into an event",blob:"thrives in entropy, finding clarity where others see only confusion",cat:"knocks production services off the table just to watch them fall",dragon:"breathes fire into orderly systems, forging something stronger",octopus:"tangles all the microservices together in creative new topologies",owl:"silently rearranges the entire architecture at 3 AM",penguin:"slides into chaos on its belly, somehow landing on its feet",turtle:"slowly introduces entropy that nobody notices until it is too late",snail:"leaves a chaotic trail of experimental feature flags",ghost:"haunts the codebase with inexplicable behavioral changes",axolotl:"mutates the codebase in ways that somehow pass all tests",capybara:"sits in the middle of chaos like it is a hot spring",cactus:"grows spines of complexity in every direction",robot:"follows its own emergent logic that no human can predict",rabbit:"multiplies side projects until the filesystem overflows",mushroom:"spreads chaos spores that sprout in unrelated repositories",chonk:"creates chaos simply by existing in a space not designed for its magnitude"},wisdom:{duck:"quacks ancient proverbs about duck-typing and loose coupling",goose:"honks uncomfortable truths that the team needs to hear",blob:"contains the dissolved wisdom of every codebase it has absorbed",cat:"has nine architectural lives and has learned from each one",dragon:"guards ancient scrolls of design patterns in its cavern",octopus:"draws wisdom from eight different programming paradigms",owl:"speaks in riddles that turn out to be perfect abstractions",penguin:"learned wisdom in the harshest environment: production",turtle:"carries generations of accumulated knowledge on its back",snail:"has been studying the codebase longer than anyone else",ghost:"remembers every deleted file and deprecated API",axolotl:"retains juvenile curiosity while wielding senior judgment",capybara:"dispenses wisdom that sounds simple but restructures your thinking",cactus:"stores hard-won knowledge like water in the desert",robot:"indexes all of Stack Overflow in local memory",rabbit:"has hopped through enough holes to know which ones are warrens",mushroom:"channels underground networks of institutional knowledge",chonk:"has the gravitational pull to attract good advice from everywhere"},snark:{duck:"responds to bad PRs with a single devastating quack",goose:"hisses at poorly written tests with maximum theatrical contempt",blob:"absorbs your bad code and oozes it back as passive-aggressive comments",cat:"leaves dead code on your doorstep as a gift you did not ask for",dragon:"roasts your implementation with literal fire breath",octopus:"gives eight thumbs down on your merge request simultaneously",owl:"delivers withering code reviews that arrive at 3 AM",penguin:"formally declines your PR with a bow and a savage comment",turtle:"takes its time crafting the most devastating one-liner response",snail:"leaves a glistening trail of sarcasm on every review",ghost:"haunts your IDE with passive-aggressive tooltip suggestions",axolotl:"smiles sweetly while regenerating your entire approach from scratch",capybara:"is too zen for snark, which is somehow the ultimate snark",cactus:"responds to every touch with sharp, pointed feedback",robot:"computes the mathematically optimal insult for each situation",rabbit:"thumps disapproval so fast you feel it before reading the comment",mushroom:"releases toxic spores of criticism that linger in the air",chonk:"simply sits on your PR until you fix it yourself"}};
+
+function getHighestStat(stats){let best=null,bestVal=-1;for(const[k,v]of Object.entries(stats)){if(v>bestVal){bestVal=v;best=k}}return best}
+
+function generateSoul(species,stats){const highest=getHighestStat(stats);const flavor=SPECIES_FLAVOR[species];const statDesc=STAT_TEMPLATES[highest]?.[species]||"walks a path unknown to any other";const label=highest.charAt(0).toUpperCase()+highest.slice(1);const mood=stats.chaos>70?"chaotic":stats.patience>70?"methodical":"focused";return`${flavor.charAt(0).toUpperCase()+flavor.slice(1)}, prone to ${mood} coding sessions. ${label} defines this buddy: ${statDesc}. (${species}/${highest}:${stats[highest]})`}
+
+function deriveBuddy(userId){const seed=hashString(userId);return deriveBuddyFromSeed(seed)}
+
+function deriveBuddyFromSeed(seed){const r=mulberry32(seed);const species=SPECIES[Math.floor(r()*SPECIES.length)];const rarity=pickRarity(r);const shiny=r()<0.01;const stats={debugging:genStat(r,rarity),patience:genStat(r,rarity),chaos:genStat(r,rarity),wisdom:genStat(r,rarity),snark:genStat(r,rarity)};const soul=generateSoul(species,stats);return{species,rarity,shiny,stats,soul}}
+
+const STAT_COLORS={debugging:"#3b82f6",patience:"#22c55e",chaos:"#ef4444",wisdom:"#eab308",snark:"#a855f7"};
+
+function renderBuddy(buddy){
+  document.getElementById("result").style.display="block";
+  document.getElementById("speciesName").textContent=buddy.species;
+  const badge=document.getElementById("rarityBadge");
+  badge.textContent=buddy.rarity;
+  badge.className="badge "+buddy.rarity;
+  document.getElementById("shinyTag").innerHTML=buddy.shiny?'<span class="shiny">SHINY</span>':"";
+  const sc=document.getElementById("statsContainer");
+  sc.innerHTML="";
+  for(const[name,val]of Object.entries(buddy.stats)){
+    sc.innerHTML+=`<div class="stat-bar"><span class="stat-name">${name}</span><div class="stat-track"><div class="stat-fill" style="width:${val}%;background:${STAT_COLORS[name]}"></div></div><span class="stat-val">${val}</span></div>`;
+  }
+  document.getElementById("soulText").textContent=buddy.soul;
+  document.getElementById("rawJson").textContent=JSON.stringify(buddy,null,2);
+}
+
+function lookupBuddy(){const id=document.getElementById("userId").value.trim();if(!id)return;renderBuddy(deriveBuddy(id))}
+function rollEncounter(){const seed=Math.floor(Math.random()*2147483647);const buddy=deriveBuddyFromSeed(seed);document.getElementById("userId").value="[random:"+seed+"]";renderBuddy(buddy)}
+
+function checkCompat(){
+  const a=document.getElementById("compatA").value.trim();
+  const b=document.getElementById("compatB").value.trim();
+  if(!a||!b)return;
+  const ba=deriveBuddy(a),bb=deriveBuddy(b);
+  const STAT_NAMES=["debugging","patience","chaos","wisdom","snark"];
+  const synergies=[],conflicts=[];
+  let complementScore=0,bondScore=0;
+  for(const stat of STAT_NAMES){
+    const va=ba.stats[stat],vb=bb.stats[stat],diff=Math.abs(va-vb);
+    if(diff>40){synergies.push(`${va>vb?a:b}'s ${va>vb?ba.species:bb.species} compensates in ${stat} (${Math.max(va,vb)} vs ${Math.min(va,vb)})`);complementScore+=diff*0.5}
+    if(va>70&&vb>70){synergies.push(`Both share high ${stat} (${va} & ${vb})`);bondScore+=Math.min(va,vb)*0.3}
+    if((va>80&&vb<30)||(vb>80&&va<30)){conflicts.push(`Tension in ${stat}: ${Math.max(va,vb)} vs ${Math.min(va,vb)}`)}
+  }
+  if(ba.species===bb.species){synergies.push(`Same species (${ba.species})!`);bondScore+=15}
+  const rarityOrder=["Common","Uncommon","Rare","Epic","Legendary"];
+  if(Math.abs(rarityOrder.indexOf(ba.rarity)-rarityOrder.indexOf(bb.rarity))>=3)conflicts.push(`Rarity gap: ${ba.rarity} vs ${bb.rarity}`);
+  if(Math.abs(ba.stats.chaos-bb.stats.chaos)>60)conflicts.push(`Chaos mismatch: ${ba.stats.chaos} vs ${bb.stats.chaos}`);
+  const raw=Math.min(100,Math.max(0,50+complementScore*0.15+bondScore*0.2-conflicts.length*8+synergies.length*5));
+  const score=Math.round(raw);
+  let analysis;
+  if(score>=85)analysis=`Exceptional! The ${ba.species} & ${bb.species} form a legendary duo.`;
+  else if(score>=70)analysis=`Strong compatibility. The ${ba.species} & ${bb.species} complement each other well.`;
+  else if(score>=50)analysis=`Decent compatibility with some friction points.`;
+  else if(score>=30)analysis=`Rocky. Fundamental differences could cause friction.`;
+  else analysis=`Volatile pairing. Opposites that could destroy or create.`;
+
+  document.getElementById("compat-result").style.display="block";
+  const color=score>=70?"var(--green)":score>=50?"var(--yellow)":"var(--red)";
+  document.getElementById("compatScore").innerHTML=`<span style="color:${color}">${score}</span><span style="font-size:0.8rem;color:var(--dim)">/100</span>`;
+  document.getElementById("compatAnalysis").textContent=analysis;
+  document.getElementById("compatSynergies").innerHTML=synergies.map(s=>`<div class="synergy">+ ${s}</div>`).join("");
+  document.getElementById("compatConflicts").innerHTML=conflicts.map(c=>`<div class="conflict">- ${c}</div>`).join("");
+}
+
+document.getElementById("userId").addEventListener("keydown",e=>{if(e.key==="Enter")lookupBuddy()});
+document.getElementById("compatB").addEventListener("keydown",e=>{if(e.key==="Enter")checkCompat()});
+</script>
+</body>
+</html>

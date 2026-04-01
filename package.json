@@ -1,0 +1,40 @@
+{
+  "name": "@shipitandpray/mcp-buddy",
+  "version": "0.1.0",
+  "description": "MCP server exposing your Claude Code /buddy stats and personality as tools.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "mcp-buddy": "./dist/index.js"
+  },
+  "homepage": "https://shipitandpray.github.io/mcp-buddy/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ShipItAndPray/mcp-buddy"
+  },
+  "keywords": [
+    "mcp",
+    "buddy",
+    "claude",
+    "claude-code",
+    "model-context-protocol",
+    "ai",
+    "personality"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "check": "tsc --noEmit",
+    "test": "vitest run",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.1"
+  },
+  "devDependencies": {
+    "tsup": "^8.5.0",
+    "typescript": "^5.9.0",
+    "vitest": "^3.2.0"
+  }
+}
